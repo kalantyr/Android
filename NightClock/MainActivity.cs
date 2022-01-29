@@ -2,6 +2,7 @@
 using System.Timers;
 using Android.App;
 using Android.Content;
+using Android.Graphics;
 using Android.Hardware;
 using Android.OS;
 using Android.Views;
@@ -15,11 +16,25 @@ namespace NightClock
     public class MainActivity : AppCompatActivity, ISensorEventListener
     {
         private const float MinAlpha = 0.1f;
-        private const float MaxAlpha = 0.6f;
+        private const float MaxAlpha = 0.9f;
         private TextView? _textView;
         private Timer _timer;
         private float _maxLight = 1;
         private float _lastLight = 1;
+        private int _colorIndex;
+
+        private static readonly Color[] Colors = new[]
+        {
+            Color.Green,
+            Color.GreenYellow,
+            Color.Yellow,
+            Color.Orange,
+            Color.Red,
+            Color.Magenta,
+            Color.Blue,
+            Color.Aqua,
+            Color.White
+        };
 
         private static readonly StatusBarVisibility FullscreenFlags = (StatusBarVisibility)(
             SystemUiFlags.HideNavigation |
@@ -41,6 +56,8 @@ namespace NightClock
             _textView.Alpha = 0.6f;
 
             _maxLight = Preferences.Get(nameof(_maxLight), 1f);
+            _colorIndex = Preferences.Get(nameof(_colorIndex), 0);
+            _textView.SetTextColor(Colors[_colorIndex]);
 
             _timer = new Timer(TimerPeriod.TotalMilliseconds);
             _timer.Elapsed += OnTimerTick;
@@ -74,11 +91,13 @@ namespace NightClock
         {
             if (e.Action == MotionEventActions.Down)
             {
-                return true;
+                _colorIndex++;
+                if (_colorIndex >= Colors.Length)
+                    _colorIndex = 0;
+                _textView.SetTextColor(Colors[_colorIndex]);
+                Preferences.Set(nameof(_colorIndex), _colorIndex);
 
-                _textView.Alpha += 0.5f;
-                while (_textView.Alpha > 1)
-                    _textView.Alpha--;
+                return true;
             }
 
             return base.OnTouchEvent(e);
