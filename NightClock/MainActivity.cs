@@ -4,21 +4,22 @@ using Android.App;
 using Android.Content;
 using Android.Hardware;
 using Android.OS;
-using Android.Runtime;
 using Android.Views;
 using Android.Widget;
 using AndroidX.AppCompat.App;
+using Xamarin.Essentials;
 
 namespace NightClock
 {
     [Activity(Label = "@string/app_name", Theme = "@style/AppTheme.NoActionBar", MainLauncher = true)]
     public class MainActivity : AppCompatActivity, ISensorEventListener
     {
-        private const int MaxLightLum = 40000;
-        private const float MinAlpha = 0.05f;
-        private const float MaxAlpha = 0.5f;
+        private const float MinAlpha = 0.1f;
+        private const float MaxAlpha = 0.6f;
         private TextView? _textView;
         private Timer _timer;
+        private float _maxLight = 1;
+        private float _lastLight = 1;
 
         private static readonly StatusBarVisibility FullscreenFlags = (StatusBarVisibility)(
             SystemUiFlags.HideNavigation |
@@ -33,11 +34,13 @@ namespace NightClock
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
-            Xamarin.Essentials.Platform.Init(this, savedInstanceState);
+            Platform.Init(this, savedInstanceState);
             SetContentView(Resource.Layout.activity_main);
 
             _textView = FindViewById<TextView>(Resource.Id.textView1);
             _textView.Alpha = 0.6f;
+
+            _maxLight = Preferences.Get(nameof(_maxLight), 1f);
 
             _timer = new Timer(TimerPeriod.TotalMilliseconds);
             _timer.Elapsed += OnTimerTick;
@@ -46,7 +49,7 @@ namespace NightClock
 
             var sensorService = (SensorManager)GetSystemService(Context.SensorService);
             var lightSensor = sensorService.GetDefaultSensor(SensorType.Light);
-            sensorService.RegisterListener(this, lightSensor, SensorDelay.Normal);
+            sensorService.RegisterListener(this, lightSensor, SensorDelay.Ui);
         }
 
         private void AutoSize()
@@ -87,36 +90,20 @@ namespace NightClock
 
             if (hasFocus)
                 Window.DecorView.SystemUiVisibility = FullscreenFlags;
+
+            DeviceDisplay.KeepScreenOn = hasFocus;
         }
 
         private void OnTimerTick(object sender, ElapsedEventArgs e)
         {
-            _textView.Text = DateTime.Now.ToString("hh:mm").TrimStart('0');
+            _textView.Text = DateTime.Now.ToString("HH:mm").TrimStart('0');
             AutoSize();
-        }
 
-        public override bool OnCreateOptionsMenu(IMenu menu)
-        {
-            MenuInflater.Inflate(Resource.Menu.menu_main, menu);
-            return true;
-        }
+            _textView.Alpha = MinAlpha + (MaxAlpha - MinAlpha) * (_lastLight / _maxLight);
 
-        public override bool OnOptionsItemSelected(IMenuItem item)
-        {
-            var id = item.ItemId;
-            if (id == Resource.Id.action_settings)
-            {
-                return true;
-            }
-
-            return base.OnOptionsItemSelected(item);
-        }
-
-        public override void OnRequestPermissionsResult(int requestCode, string[] permissions, [GeneratedEnum] Android.Content.PM.Permission[] grantResults)
-        {
-            Xamarin.Essentials.Platform.OnRequestPermissionsResult(requestCode, permissions, grantResults);
-
-            base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+            var oldValue = Preferences.Get(nameof(_maxLight), 1f);
+            if (oldValue < _maxLight)
+                Preferences.Set(nameof(_maxLight), _maxLight);
         }
 
         public void OnAccuracyChanged(Sensor? sensor, SensorStatus accuracy)
@@ -127,9 +114,9 @@ namespace NightClock
         {
             if (e.Sensor.Type == SensorType.Light)
             {
-                var light = e.Values[0];
-                var r = light / MaxLightLum;
-                _textView.Alpha = MinAlpha + (MaxAlpha - MinAlpha) * r;
+                _lastLight = e.Values[0];
+                if (_lastLight > _maxLight)
+                    _maxLight = _lastLight;
             }
         }
     }
