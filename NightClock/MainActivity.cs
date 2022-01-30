@@ -1,32 +1,30 @@
 ﻿using System;
 using System.Timers;
 using Android.App;
-using Android.Content;
-using Android.Graphics;
-using Android.Hardware;
 using Android.OS;
 using Android.Views;
 using Android.Widget;
 using AndroidX.AppCompat.App;
 using Xamarin.Essentials;
+using Color = Android.Graphics.Color;
 
 namespace NightClock
 {
     [Activity(Label = "@string/app_name", Theme = "@style/AppTheme.NoActionBar", MainLauncher = true)]
-    public class MainActivity : AppCompatActivity, ISensorEventListener
+    public class MainActivity : AppCompatActivity
     {
-        private const float MinAlpha = 0.1f;
-        private const float MaxAlpha = 0.9f;
+        private const float MinAlpha = 0.25f;
+        private const float MaxAlpha = 0.75f;
+        private const float TextSize = 0.9f;
         private TextView? _textView;
         private Timer _timer;
-        private float _maxLight = 1;
-        private float _lastLight = 1;
         private int _colorIndex;
+        private DateTime _lastColorChangeTime = DateTime.MinValue;
 
         private static readonly Color[] Colors = new[]
         {
-            Color.Green,
-            Color.GreenYellow,
+            Color.Rgb(0, 255, 0),
+            Color.Rgb(128, 255, 0),
             Color.Yellow,
             Color.Orange,
             Color.Red,
@@ -45,6 +43,7 @@ namespace NightClock
             SystemUiFlags.ImmersiveSticky);
 
         private static readonly TimeSpan TimerPeriod = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan ColorChangeMinPeriod = TimeSpan.FromSeconds(1);
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -53,9 +52,8 @@ namespace NightClock
             SetContentView(Resource.Layout.activity_main);
 
             _textView = FindViewById<TextView>(Resource.Id.textView1);
-            _textView.Alpha = 0.6f;
+            _textView.Alpha = Preferences.Get(nameof(_textView.Alpha), MaxAlpha);
 
-            _maxLight = Preferences.Get(nameof(_maxLight), 1f);
             _colorIndex = Preferences.Get(nameof(_colorIndex), 0);
             _textView.SetTextColor(Colors[_colorIndex]);
 
@@ -63,10 +61,6 @@ namespace NightClock
             _timer.Elapsed += OnTimerTick;
             _timer.Start();
             OnTimerTick(this, null);
-
-            var sensorService = (SensorManager)GetSystemService(Context.SensorService);
-            var lightSensor = sensorService.GetDefaultSensor(SensorType.Light);
-            sensorService.RegisterListener(this, lightSensor, SensorDelay.Ui);
         }
 
         private void AutoSize()
@@ -82,21 +76,32 @@ namespace NightClock
 
             var rW = (float)screenW / textW;
             var rH = (float)screenH / textH;
-            var r = 0.9f * Math.Min(rW, rH);
+            var r = TextSize * Math.Min(rW, rH);
             _textView.ScaleX = r;
             _textView.ScaleY = r;
         }
 
         public override bool OnTouchEvent(MotionEvent? e)
         {
-            if (e.Action == MotionEventActions.Down)
+            if (e.Action == MotionEventActions.Move)
             {
+                if (DateTime.Now - _lastColorChangeTime < ColorChangeMinPeriod)
+                    return true;
+                _lastColorChangeTime = DateTime.Now;
+
                 _colorIndex++;
                 if (_colorIndex >= Colors.Length)
                     _colorIndex = 0;
                 _textView.SetTextColor(Colors[_colorIndex]);
                 Preferences.Set(nameof(_colorIndex), _colorIndex);
 
+                return true;
+            }
+
+            if (e.Action == MotionEventActions.Up)
+            {
+                _textView.Alpha = _textView.Alpha > 0.5f ? MinAlpha : MaxAlpha;
+                Preferences.Set(nameof(_textView.Alpha), _textView.Alpha);
                 return true;
             }
 
@@ -115,28 +120,13 @@ namespace NightClock
 
         private void OnTimerTick(object sender, ElapsedEventArgs e)
         {
-            _textView.Text = DateTime.Now.ToString("HH:mm").TrimStart('0');
+            _textView.Text = TimeToString(DateTime.Now);
             AutoSize();
-
-            _textView.Alpha = MinAlpha + (MaxAlpha - MinAlpha) * (_lastLight / _maxLight);
-
-            var oldValue = Preferences.Get(nameof(_maxLight), 1f);
-            if (oldValue < _maxLight)
-                Preferences.Set(nameof(_maxLight), _maxLight);
         }
 
-        public void OnAccuracyChanged(Sensor? sensor, SensorStatus accuracy)
+        private static string TimeToString(DateTime time)
         {
-        }
-
-        public void OnSensorChanged(SensorEvent? e)
-        {
-            if (e.Sensor.Type == SensorType.Light)
-            {
-                _lastLight = e.Values[0];
-                if (_lastLight > _maxLight)
-                    _maxLight = _lastLight;
-            }
+            return $"{time.Hour} : {time.Minute:00}";
         }
     }
 }

@@ -6,23 +6,24 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
-    <RelativeLayout
+	    <RelativeLayout
         android:minWidth="25px"
         android:minHeight="25px"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:gravity="center"
-        android:id="@+id/relativeLayout1">
-        <TextView
-            android:text="12:34"
+        android:gravity="center">
+
+	    <TextView
+            android:text="--:--"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:minWidth="25px"
             android:minHeight="25px"
             android:id="@+id/textView1"
             android:textColor="#ff80ff00"
-            android:textSize="100px"
-            android:alpha="0.5"/>
+            android:textSize="200px">
+	    </TextView>
+
     </RelativeLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
