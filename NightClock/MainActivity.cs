@@ -19,7 +19,6 @@ namespace NightClock
         private TextView? _textView;
         private Timer _timer;
         private int _colorIndex;
-        private DateTime _lastColorChangeTime = DateTime.MinValue;
 
         private static readonly Color[] Colors = new[]
         {
@@ -43,7 +42,6 @@ namespace NightClock
             SystemUiFlags.ImmersiveSticky);
 
         private static readonly TimeSpan TimerPeriod = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan ColorChangeMinPeriod = TimeSpan.FromSeconds(1);
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -83,29 +81,32 @@ namespace NightClock
 
         public override bool OnTouchEvent(MotionEvent? e)
         {
-            if (e.Action == MotionEventActions.Move)
-            {
-                if (DateTime.Now - _lastColorChangeTime < ColorChangeMinPeriod)
-                    return true;
-                _lastColorChangeTime = DateTime.Now;
-
-                _colorIndex++;
-                if (_colorIndex >= Colors.Length)
-                    _colorIndex = 0;
-                _textView.SetTextColor(Colors[_colorIndex]);
-                Preferences.Set(nameof(_colorIndex), _colorIndex);
-
-                return true;
-            }
-
             if (e.Action == MotionEventActions.Up)
             {
-                _textView.Alpha = _textView.Alpha > 0.5f ? MinAlpha : MaxAlpha;
-                Preferences.Set(nameof(_textView.Alpha), _textView.Alpha);
+                if (e.RawX > e.RawY)
+                    ChangeAlpha();
+                else
+                    ChangeColor();
+
                 return true;
             }
 
             return base.OnTouchEvent(e);
+        }
+
+        private void ChangeAlpha()
+        {
+            _textView.Alpha = _textView.Alpha > 0.5f ? MinAlpha : MaxAlpha;
+            Preferences.Set(nameof(_textView.Alpha), _textView.Alpha);
+        }
+
+        private void ChangeColor()
+        {
+            _colorIndex++;
+            if (_colorIndex >= Colors.Length)
+                _colorIndex = 0;
+            _textView.SetTextColor(Colors[_colorIndex]);
+            Preferences.Set(nameof(_colorIndex), _colorIndex);
         }
 
         public override void OnWindowFocusChanged(bool hasFocus)
@@ -126,7 +127,7 @@ namespace NightClock
 
         private static string TimeToString(DateTime time)
         {
-            return $"{time.Hour} : {time.Minute:00}";
+            return $"{time.Hour}:{time.Minute:00}";
         }
     }
 }

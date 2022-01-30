@@ -13,7 +13,7 @@
         android:layout_height="fill_parent"
         android:gravity="center">
 
-	    <TextView
+        <TextView
             android:text="--:--"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -21,8 +21,9 @@
             android:minHeight="25px"
             android:id="@+id/textView1"
             android:textColor="#ff80ff00"
-            android:textSize="200px">
-	    </TextView>
+            android:textSize="200px"
+            android:fontFamily="monospace" >
+        </TextView>
 
     </RelativeLayout>
 
