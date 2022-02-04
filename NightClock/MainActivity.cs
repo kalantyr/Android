@@ -15,7 +15,7 @@ namespace NightClock
     {
         private const float MinAlpha = 0.25f;
         private const float MaxAlpha = 0.75f;
-        private const float TextSize = 0.9f;
+        private const float TextSize = 0.8f;
         private TextView? _textView;
         private Timer _timer;
         private int _colorIndex;
